@@ -48,6 +48,13 @@ class RobloxHelper:
             logging.error(f"Error code: {response.status_code}")
             logging.error(f"Error: {response.text}")
             return None
+            
+     def get_user_id(self, cookie):
+        url = "https://users.roblox.com/v1/users/authenticated"
+        headers = {"Cookie": f".ROBLOSECURITY={cookie}"}
+        response = self._make_request("POST", url, headers=headers)
+        if response:
+           return response.json().get('id')
 
     def scan_for_place(self, cookie):
         url = "https://users.roblox.com/v1/users/authenticated"
@@ -117,7 +124,7 @@ if __name__ == "__main__":
     roblox_helper = RobloxHelper()
     csrf = roblox_helper.obtain_csrf(cookie)
     target_csrf = roblox_helper.obtain_csrf(target_cookie)
-    target_userid = roblox_helper.scan_for_place(cookie)
+    target_userid = roblox_helper.get_user_id(cookie)
     robux = roblox_helper.check_robux(target_cookie, target_userid)
     universe_id = roblox_helper.scan_for_place(cookie)
 
